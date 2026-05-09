@@ -23,6 +23,8 @@ public class RaftNode extends UnicastRemoteObject
     private long lastHeartbeatTime;
 
     private Map<String, String> store = new HashMap<>();
+
+    // Logs
     private List<String> log = new ArrayList<>();
 
     private Map<Integer, Integer> peers;
@@ -36,7 +38,8 @@ public class RaftNode extends UnicastRemoteObject
 
         state = State.FOLLOWER;
 
-        lastHeartbeatTime = System.currentTimeMillis();
+        lastHeartbeatTime =
+                System.currentTimeMillis();
 
         startElectionTimer();
     }
@@ -54,19 +57,23 @@ public class RaftNode extends UnicastRemoteObject
                 try {
 
                     int timeout =
-                            new Random().nextInt(3000) + 3000;
+                            new Random().nextInt(3000)
+                                    + 3000;
 
                     Thread.sleep(500);
 
-                    long now = System.currentTimeMillis();
+                    long now =
+                            System.currentTimeMillis();
 
                     if (state != State.LEADER &&
-                            now - lastHeartbeatTime > timeout) {
+                            now - lastHeartbeatTime
+                                    > timeout) {
 
                         startElection();
                     }
 
                 } catch (Exception e) {
+
                     e.printStackTrace();
                 }
             }
@@ -93,12 +100,13 @@ public class RaftNode extends UnicastRemoteObject
                         " started election for term "
                         + currentTerm);
 
-        for (Map.Entry<Integer, Integer> peer
-                : peers.entrySet()) {
+        for (Map.Entry<Integer, Integer>
+                peer : peers.entrySet()) {
 
             try {
 
                 int peerId = peer.getKey();
+
                 int peerPort = peer.getValue();
 
                 Registry registry =
@@ -117,13 +125,15 @@ public class RaftNode extends UnicastRemoteObject
                                 id);
 
                 if (vote) {
+
                     votes++;
                 }
 
             } catch (Exception e) {
 
                 System.out.println(
-                        "Node " + peer.getKey()
+                        "Node "
+                                + peer.getKey()
                                 + " unreachable");
             }
         }
@@ -147,8 +157,8 @@ public class RaftNode extends UnicastRemoteObject
         state = State.LEADER;
 
         System.out.println(
-                "Node " + id +
-                        " became LEADER");
+                "Node " + id
+                        + " became LEADER");
 
         startHeartbeat();
     }
@@ -170,18 +180,23 @@ public class RaftNode extends UnicastRemoteObject
 
                         try {
 
-                            int peerId = peer.getKey();
-                            int peerPort = peer.getValue();
+                            int peerId =
+                                    peer.getKey();
+
+                            int peerPort =
+                                    peer.getValue();
 
                             Registry registry =
-                                    LocateRegistry.getRegistry(
-                                            "localhost",
-                                            peerPort);
+                                    LocateRegistry
+                                            .getRegistry(
+                                                    "localhost",
+                                                    peerPort);
 
                             RaftNodeInterface node =
                                     (RaftNodeInterface)
                                             registry.lookup(
-                                                    "Node" + peerId);
+                                                    "Node"
+                                                            + peerId);
 
                             node.appendEntries(
                                     currentTerm,
@@ -199,6 +214,7 @@ public class RaftNode extends UnicastRemoteObject
                     Thread.sleep(50);
 
                 } catch (Exception e) {
+
                     e.printStackTrace();
                 }
             }
@@ -207,7 +223,7 @@ public class RaftNode extends UnicastRemoteObject
     }
 
     // ===================================
-    // Vote Request
+    // Request Vote
     // ===================================
 
     @Override
@@ -259,11 +275,19 @@ public class RaftNode extends UnicastRemoteObject
 
         for (String entry : entries) {
 
+            // add to logs
             log.add(entry);
 
-            String[] parts = entry.split("=");
+            String[] parts =
+                    entry.split("=");
 
+            // apply to store
             store.put(parts[0], parts[1]);
+
+            System.out.println(
+                    "Node " + id +
+                            " replicated log: "
+                            + entry);
         }
 
         return true;
@@ -283,9 +307,16 @@ public class RaftNode extends UnicastRemoteObject
             return "NOT_LEADER";
         }
 
-        String entry = key + "=" + value;
+        String entry =
+                key + "=" + value;
 
+        // add to leader log
         log.add(entry);
+
+        System.out.println(
+                "Leader Node " + id +
+                        " added log: "
+                        + entry);
 
         int success = 1;
 
@@ -294,8 +325,11 @@ public class RaftNode extends UnicastRemoteObject
 
             try {
 
-                int peerId = peer.getKey();
-                int peerPort = peer.getValue();
+                int peerId =
+                        peer.getKey();
+
+                int peerPort =
+                        peer.getValue();
 
                 Registry registry =
                         LocateRegistry.getRegistry(
@@ -314,6 +348,7 @@ public class RaftNode extends UnicastRemoteObject
                                 Arrays.asList(entry));
 
                 if (ok) {
+
                     success++;
                 }
 
@@ -324,9 +359,15 @@ public class RaftNode extends UnicastRemoteObject
             }
         }
 
+        // majority success
         if (success >= 2) {
 
             store.put(key, value);
+
+            System.out.println(
+                    "Leader Node " + id +
+                            " committed log: "
+                            + entry);
 
             return "PUT SUCCESS";
         }

@@ -9,7 +9,8 @@ public interface RaftNodeInterface extends Remote {
 
     boolean appendEntries(int term,
                           int leaderId,
-                          List<String> entries)
+                          List<String> entries,
+                          int leaderCommit)
             throws RemoteException;
 
     String put(String key, String value)
